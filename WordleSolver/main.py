@@ -1,3 +1,5 @@
+# Solver for https://www.powerlanguage.co.uk/wordle/
+
 from collections import defaultdict
 import string
 
@@ -34,8 +36,8 @@ data = {letter: {'confirmed': set(), 'incorrect': set(), 'possible': True} for l
 
 while True:
 
-	input_word = input('Enter word: ')
-	output_scores = input('Enter scores in order as (y/n/m): ')
+	input_word = input('Enter word: ').lower()
+	output_scores = input('Enter scores as (y/n/m): ').lower()
 
 	assert(len(output_scores) == len(input_word) == 5)
 	assert(input_word in valid_words)
@@ -48,7 +50,8 @@ while True:
 		score = output_scores[i]
 
 		if score == 'n':
-			data[letter]['possible'] = False
+			if len(data[letter]['incorrect']) == 0 and len(data[letter]['confirmed']) == 0:
+				data[letter]['possible'] = False
 
 		elif score == 'm':
 			data[letter]['incorrect'].add(i)
@@ -95,7 +98,7 @@ while True:
 				possible_solutions.append(word) 
 	
 	if len(possible_solutions) == 0:
-		print(f'!ERROR FOUND NO VALID SOLUTIONS!')
+		print(f'[FOUND NO VALID SOLUTIONS]')
 		exit()
 
 	sorted_solutions, scores = rank_words(possible_solutions, get_scores = True)
@@ -105,5 +108,7 @@ while True:
 	for i in range(min(len(sorted_solutions), 15)):
 		word = sorted_solutions[i]
 		rank = (str(i + 1) + '.').ljust(3)
-		print(f'{rank} {word} | {scores[word]}')
+		# print(f'{rank} {word} | {scores[word]}')
+		print(f'{rank} {word} | {round((scores[word] / sum(scores.values())) * 100, 2)}%')
 	print(f'RECOMENDED WORD: {sorted_solutions[0]}\n')
+	
