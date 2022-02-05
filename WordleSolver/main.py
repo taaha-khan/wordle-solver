@@ -1,114 +1,70 @@
 # Solver for https://www.powerlanguage.co.uk/wordle/
 
+import sys
+sys.dont_write_bytecode = True
+
 from collections import defaultdict
-import string
+import numpy as np
+import time
 
-letters = string.ascii_lowercase
-valid_words = set([line.rstrip('\n') for line in open('5_letter_words.txt')])
+from solver import Solver
 
-def rank_words(words, get_scores = False):
+VALID_ANSWERS = set([line.rstrip('\n') for line in open('data/valid_answers.txt')])
+VALID_GUESSES = set([line.rstrip('\n') for line in open('data/valid_guesses.txt')])
 
-	freq = defaultdict(int)
+solver = Solver(VALID_ANSWERS, VALID_GUESSES)
 
-	for word in words:
-		for letter in word:
-			freq[letter] += 1
+def test_algorithm(heuristic):
 
-	lowest = min(freq.values())
-	for letter in letters:
-		freq[letter] /= lowest
+	n_guesses = []
+	times = []
+	dist = defaultdict(int)
+	over = []
 
-	scores = defaultdict(float)
-	for word in words:
-		for letter in set(word):
-			scores[word] += freq[letter]
+	run = 0
 
-	sort = list(sorted(scores, key = scores.get, reverse = True))
-	if get_scores: return sort, scores
-	return sort
-
-ranked = rank_words(valid_words)
-print(f'Recomended start word: {ranked[0]}\n')
-
-guessed = set()
-
-data = {letter: {'confirmed': set(), 'incorrect': set(), 'possible': True} for letter in letters}
-
-while True:
-
-	input_word = input('Enter word: ').lower()
-	output_scores = input('Enter scores as (y/n/m): ').lower()
-
-	assert(len(output_scores) == len(input_word) == 5)
-	assert(input_word in valid_words)
-	assert(len([let for let in output_scores if let not in 'ynm']) == 0)
-
-	guessed.add(input_word)
-	possible_solutions = []
-
-	for i, letter in enumerate(input_word):
-		score = output_scores[i]
-
-		if score == 'n':
-			if len(data[letter]['incorrect']) == 0 and len(data[letter]['confirmed']) == 0:
-				data[letter]['possible'] = False
-
-		elif score == 'm':
-			data[letter]['incorrect'].add(i)
-
-		elif score == 'y':
-			data[letter]['confirmed'].add(i)
+	for target in VALID_ANSWERS:
 		
-	for word in valid_words:
-		# Check if word fits all criteria
+		solver = Solver(VALID_ANSWERS, VALID_GUESSES)
+		start = time.perf_counter()
+		guesses = solver.run_until_found(target, heuristic, start = 'salet')
+		times.append(time.perf_counter() - start)
+		n_guesses.append(guesses)
+		dist[guesses] += 1
+		if guesses > 6: over.append(target)
 
-		if word in guessed:
-			continue
+		run += 1
+		print(f'{run} / {len(VALID_ANSWERS)}: {[dist[i] for i in range(1, max(n_guesses) + 1)]}')
 
-		possible = True
+	print(f'Heuristic | Avg Guesses: {round(np.mean(n_guesses), 3)} | Max Guesses: {max(n_guesses)} | Avg time: {round(np.mean(times), 3)} sec')
+	print(f'Distribution: {[dist[i] for i in range(1, max(n_guesses) + 1)]} | Incomplete: {over}')
 
-		for i, letter in enumerate(word):
-			if not data[letter]['possible']:
-				possible = False
-				break
+def main():
 
-			elif i in data[letter]['incorrect']:
-				possible = False
-				break
+	print(f'Recomended start word: salet\n')
 
-			for let in letters:
-				found = (len(data[let]['incorrect']) > 0)
-				if found and let not in word:
-					possible = False
-					break
-				if not possible: break
+	while True:
 
-		if possible:
+		guess = input('Enter word: ').lower()
+		result = input('Enter (y/n/m): ').lower()
 
-			ye = True
-			for letter in letters:
-				confirmed = data[letter]['confirmed']
-				for index in confirmed:
-					if word[index] != letter:
-						ye = False
-						break
-				if not ye: break
+		solutions = solver.update(guess, result)
+		sorted_solutions, scores = solver.rank_solutions(solutions)
 
-			if ye:
-				possible_solutions.append(word) 
-	
-	if len(possible_solutions) == 0:
-		print(f'[FOUND NO VALID SOLUTIONS]')
-		exit()
+		best_guesses = [word.upper() for word in solutions if scores[word] == min(scores.values())]
 
-	sorted_solutions, scores = rank_words(possible_solutions, get_scores = True)
+		sol = f'\n{len(sorted_solutions)} valid solutions'
+		print(sol + '\n' + ('-' * (len(sol) - 1)))
+		for i in range(min(len(sorted_solutions), 15)):
+			word = sorted_solutions[i]
+			rank = (str(i + 1) + '.').ljust(3)
+			print(f'{rank} {word.upper()} | {round(scores[word], 3)}')
+		print(f'Recomended word(s): {best_guesses}\n')
 
-	sol = f'\n{len(sorted_solutions)} valid solutions'
-	print(sol + '\n' + ('-' * (len(sol) - 1)))
-	for i in range(min(len(sorted_solutions), 15)):
-		word = sorted_solutions[i]
-		rank = (str(i + 1) + '.').ljust(3)
-		# print(f'{rank} {word} | {scores[word]}')
-		print(f'{rank} {word} | {round((scores[word] / sum(scores.values())) * 100, 2)}%')
-	print(f'RECOMENDED WORD: {sorted_solutions[0]}\n')
-	
+		if len(solutions) == 1:
+			break
+		
+if __name__ == '__main__':
+	main()
+	# test_algorithm(solver.rank_solutions)
+	# test_algorithm(solver.rank_solutions_old)
