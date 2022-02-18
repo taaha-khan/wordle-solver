@@ -1,0 +1,5 @@
+Heuristic | Avg Guesses: 3.563 | Max Guesses: 7 | Avg time: 3.508 sec
+Distribution: [1, 100, 1033, 974, 195, 10, 3] | Incomplete: ['batty', 'match', 'rover']
+
+Heuristic | Avg Guesses: 3.663 | Max Guesses: 9 | Avg time: 0.025 sec
+Distribution: [0, 129, 921, 947, 260, 46, 8, 3, 2] | Incomplete: ['foyer', 'goner', 'hatch', 'patch', 'pound', 'queer', 'roger', 'shave', 'stash', 'stout', 'upper', 'watch', 'wound']
